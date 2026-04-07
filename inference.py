@@ -120,6 +120,13 @@ def _build_user_prompt(
     
     context_section = f"### Task Context ###\n{task_context.strip()}\n" if task_context else ""
 
+    # 3. BUILD FEEDBACK SECTION
+    # Move \n out of f-string expression for Python < 3.12 compatibility
+    if history:
+        progress_info = history_section
+    else:
+        progress_info = f"--- Initial Feedback ---\n{latest_feedback.strip()}"
+
     return textwrap.dedent(
         f"""
         --- INSTRUCTIONS ---
@@ -134,7 +141,7 @@ def _build_user_prompt(
         {initial_design.strip()}
         ```
 
-        {history_section if history else "--- Initial Feedback ---\n" + latest_feedback.strip()}
+        {progress_info}
 
         --- Current Objective ---
         Based on the feedback above, provide your NEXT corrected attempt. 

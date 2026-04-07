@@ -36,25 +36,30 @@ except ImportError:
     from models import RtlDebuggerAction  # type: ignore
 
 # --- Configuration -------------------------------------------------------------
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-HF_TOKEN = os.getenv("HF_TOKEN")
+# OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+# GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+# HF_TOKEN = os.getenv("HF_TOKEN")
 
-if OPENAI_API_KEY:
-    # Use OpenAI directly
-    API_BASE_URL = os.getenv("API_BASE_URL") # use default (None) for OpenAI
-    API_KEY = OPENAI_API_KEY
-    MODEL_NAME = os.getenv("MODEL_NAME") or "gpt-4o"
-elif GEMINI_API_KEY:
-    # Set defaults for Gemini (which uses an OpenAI-compatible endpoint)
-    API_BASE_URL = os.getenv("API_BASE_URL") or "https://generativelanguage.googleapis.com/v1beta/openai/"
-    API_KEY = GEMINI_API_KEY
-    MODEL_NAME = os.getenv("MODEL_NAME") or "gemini-2.5-flash"
-else:
-    # Fall back to Hugging Face router
-    API_BASE_URL = os.getenv("API_BASE_URL") or "https://router.huggingface.co/v1"
-    API_KEY = HF_TOKEN or os.getenv("API_KEY")
-    MODEL_NAME = os.getenv("MODEL_NAME") or "Qwen/Qwen2.5-72B-Instruct:novita"
+# if OPENAI_API_KEY:
+#     # Use OpenAI directly
+#     API_BASE_URL = os.getenv("API_BASE_URL") # use default (None) for OpenAI
+#     API_KEY = OPENAI_API_KEY
+#     MODEL_NAME = os.getenv("MODEL_NAME") or "gpt-4o"
+# elif GEMINI_API_KEY:
+#     # Set defaults for Gemini (which uses an OpenAI-compatible endpoint)
+#     API_BASE_URL = os.getenv("API_BASE_URL") or "https://generativelanguage.googleapis.com/v1beta/openai/"
+#     API_KEY = GEMINI_API_KEY
+#     MODEL_NAME = os.getenv("MODEL_NAME") or "gemini-2.5-flash"
+# else:
+#     # Fall back to Hugging Face router
+#     API_BASE_URL = os.getenv("API_BASE_URL") or "https://router.huggingface.co/v1"
+#     API_KEY = HF_TOKEN or os.getenv("API_KEY")
+#     MODEL_NAME = os.getenv("MODEL_NAME") or "Qwen/Qwen2.5-72B-Instruct:novita"
+
+
+API_BASE_URL = os.getenv("API_BASE_URL")
+API_KEY = os.getenv("API_KEY")
+MODEL_NAME = os.getenv("MODEL_NAME")
 
 TASK_NAME = os.getenv("RTL_DEBUGGER_TASK_NAME", "unknown-task")
 IMAGE_NAME = os.getenv("IMAGE_NAME")

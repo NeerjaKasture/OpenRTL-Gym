@@ -1,0 +1,24 @@
+# Exclude the large virtual environment
+.venv/
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+**/*.pyd
+
+# Exclude git and project meta files
+.git/
+.gitignore
+.dockerignore
+.python-version
+.uv/
+
+# Exclude RTL simulation artifacts
+**/sim_build/
+**/*.vcd
+**/result.json
+**/design_active.v
+
+# Exclude other build artifacts
+build/
+dist/
+*.egg-info/

@@ -1,0 +1,13 @@
+spec_version: 1
+name: rtl_debugger
+type: space
+runtime: fastapi
+app: server.app:app
+port: 8000
+tasks:
+  - id: task0
+    grader: server.graders:RtlGrader
+  - id: task1
+    grader: server.graders:RtlGrader
+  - id: task2
+    grader: server.graders:RtlGrader

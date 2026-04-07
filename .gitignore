@@ -1,0 +1,19 @@
+# Local environment and caches
+.env
+.venv/
+.pytest_cache/
+.DS_Store
+
+# Task-specific runtime files (exclude from Git to keep task definitions clean)
+
+
+# Verilog/Cocotb simulation artifacts
+**/result.xml
+**/sim_build/
+
+# Python artifacts
+**/__pycache__/
+**/*.pyc
+
+# Local scripts
+validate_submission.sh

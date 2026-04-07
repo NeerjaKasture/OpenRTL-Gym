@@ -1,0 +1,2 @@
+[console_scripts]
+server = rtl_debugger.server.app:main

@@ -21,19 +21,18 @@ The **RTL Debugger** is a Reinforcement Learning environment designed for automa
 ## Quick Start
 
 ### 1. Build the Environment
-The environment runs in a Docker container to ensure all hardware tools (`iverilog`, `make`, `python-cocotb`) are correctly installed.
+The environment runs in a Docker container to ensure all hardware tools are correctly installed.
 
 ```bash
 # Build the image locally
 docker build -t rtl_debugger-env:latest .
 ```
 
-### 2. Run the Server
+### 2. Launch the Environment Server
 ```bash
-# Start the environment server on port 8000
 docker run -p 8000:8000 --rm rtl_debugger-env:latest
 ```
-Access the web UI at [http://localhost:8000/web](http://localhost:8000/web).
+Access the interactive web-playground at: [http://localhost:8000/web](http://localhost:8000/web)
 
 ### 3. Run the Inference Agent
 We provide a reference inference script that uses LLM to play the environment:
@@ -42,7 +41,8 @@ We provide a reference inference script that uses LLM to play the environment:
 # Install dependencies
 uv sync
 
-# Run the agent 
+# Configure your API_KEY, MODEL_NAME and  in .env
+# Run the evaluation loop
 uv run python inference.py
 ```
 
@@ -52,14 +52,29 @@ uv run python inference.py
 Agents submit their corrected Verilog module:
 - `fixed_code` (str): The full Verilog module source.
 
-### Observation Model (`RtlDebuggerObservation`)
-The environment returns detailed hardware-centric feedback:
-- `design_code` (str): The initial (buggy) design for reference.
-- `feedback` (str): Raw output from `iverilog` errors or `cocotb` testbench logs.
-- `compiled` (bool): Whether the code successfully compiled.
-- `passed_tests` (bool): Whether all functional testcases passed.
-- `pass_rate` (float): Ratio of passed tests [0.0 - 1.0].
-- `levenshtein_distance` (int): Number of lines modified compared to the previous step.
+### Observation: `RtlDebuggerObservation`
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `task_id` | `str` | Name of the selected task (e.g., `task0`). |
+| `feedback` | `str` | Combined compiler errors and testbench results. |
+| `pass_rate` | `float` | Percent of testcases passed [0.0 - 1.0]. |
+| `progress_ratio` | `float` | Percent of simulation sequence completed before the first failure. |
+| `compiled` | `bool` | Whether the Verilog code is syntactically valid. |
+| `lev_distance` | `int` | Number of modified lines compared to the previous attempt. |
+| `score` | `float` | Final normalized grader score [0.0 - 1.0]. |
 
 ---
-*Built with [OpenEnv](https://github.com/meta-pytorch/openenv-core)*.
+
+## 📂 Project Structure
+
+```text
+.
+├── tasks/                   # Curated hardware debugging tasks
+│   ├── task0_half_adder/    # Syntax & basic logic
+│   ├── task1_xor_gate/      # Combinational logic
+│   └── task2_moore_1101/    # Sequential logic
+├── server/                  
+├── models.py                
+├── inference.py             
+└── client.py                
+```

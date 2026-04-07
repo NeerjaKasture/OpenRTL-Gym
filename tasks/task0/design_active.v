@@ -3,5 +3,5 @@ module half_adder(
     output sum, carry
 );
     assign sum = a ^ b;
-    assign carry = a & b; // Changed 'and' to '&' for the bitwise AND operator
+    assign carry = a & b; 
 endmodule

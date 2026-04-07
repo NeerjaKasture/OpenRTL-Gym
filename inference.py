@@ -68,7 +68,7 @@ MAX_STEPS = 8
 TEMPERATURE = 0.3
 MAX_TOKENS = 8192
 
-
+SUCCESS_SCORE_THRESHOLD = 0.1
 
 
 # --- Prompts -------------------------------------------------------------------
@@ -94,7 +94,7 @@ def _build_user_prompt(
     step: int,
     initial_design: str,
     task_context: str,
-    history: List[Tuple[str, str]],
+    history: List[Tuple[str, str, float]],
     latest_feedback: str,
 ) -> str:
     """
@@ -112,11 +112,12 @@ def _build_user_prompt(
         history_lines = []
         # Calculate exactly which attempts to show
         start_idx = max(0, len(history) - 3) 
-        for i, (code, hist_feedback) in enumerate(history[start_idx:], start=start_idx + 1):
+        for i, (code, hist_feedback, hist_reward) in enumerate(history[start_idx:], start=start_idx + 1):
             history_lines.append(
                 f"### Attempt {i} ###\n"
                 f"--- Submittal ---\n```verilog\n{code.strip()}\n```\n"
-                f"--- Result ---\n{hist_feedback.strip() or '(no output)'}"
+                f"--- Result ---\n{hist_feedback.strip() or '(no output)'}\n"
+                f"--- Reward ---\n{hist_reward:0.2f}"
             )
         history_section = "\n\n" + "\n\n".join(history_lines)
 
@@ -212,7 +213,7 @@ SERVER_URL = os.getenv("RTL_SERVER_URL", "http://localhost:8000")
 def main() -> None:
     llm = OpenAI(base_url=API_BASE_URL, api_key=API_KEY)
 
-    history: List[Tuple[str, str]] = []  # (code, feedback) pairs
+    history: List[Tuple[str, str, float]] = []  # (code, feedback, reward) triples
     rewards: List[float] = []
     success = False
     num_steps = 0
@@ -271,8 +272,7 @@ def main() -> None:
                     
                     latest_feedback = obs.feedback
                     rewards.append(result.reward)
-                    history.append((code, obs.feedback))
-                    success = result.done
+                    history.append((code, obs.feedback, result.reward))
                     final_score = obs.score
 
                     # If not everything passed, feedback is considered the current error
@@ -295,11 +295,11 @@ def main() -> None:
 
     finally:
         # Emit the END line (always)
-        success_str = "true" if success else "false"
         rewards_str = ",".join([f"{r:0.2f}" for r in rewards])
-        print(f"[END] success={success_str} steps={num_steps} rewards={rewards_str}")
         final_score = max(0.01, min(0.99, final_score))
-        print(f"Grader Score for {TASK_NAME} : {final_score:.3f}")
+        success = final_score >= SUCCESS_SCORE_THRESHOLD
+        success_str = "true" if success else "false"
+        print(f"[END] success={success_str} steps={num_steps} score={final_score:.3f} rewards={rewards_str}")
 
 
 if __name__ == "__main__":

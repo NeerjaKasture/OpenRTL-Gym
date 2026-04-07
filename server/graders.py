@@ -1,7 +1,6 @@
 import json
 import os
 from openenv.core.env_server.types import State
-from server.rtl_debugger_environment import RtlDebuggerEnvironment
 
 class RtlGrader:
     """
@@ -9,7 +8,7 @@ class RtlGrader:
     Evaluates the final state of the environment after the episode finishes.
     """
     
-    def __call__(self, state: State, env: RtlDebuggerEnvironment) -> float:
+    def __call__(self, state: State, env: "RtlDebuggerEnvironment") -> float:
         """
         OpenEnv interface for grading.
         Reads the final result.json from the active task directory and computes the score.
@@ -31,7 +30,8 @@ class RtlGrader:
         passed_all = result_json.get("passed", False)
 
         pass_rate       = num_passed / num_tests if num_tests > 0 else 0.0
-        step_efficiency = (state.step_count / 8)  # max_steps = 8
+        max_steps = 8
+        step_efficiency = (state.step_count / max_steps)
 
         if passed_all:
             # Solved — difficulty determined by how many steps it needed

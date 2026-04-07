@@ -1,7 +1,7 @@
 TOPLEVEL_LANG = verilog
 VERILOG_SOURCES = design_active.v
-TOPLEVEL = half_adder
-COCOTB_TEST_MODULES = test_half_adder
+TOPLEVEL = moore_ol
+COCOTB_TEST_MODULES = test_moore_1101
 
 SIM = icarus
 

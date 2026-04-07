@@ -35,6 +35,9 @@ try:
 except ImportError:
     from models import RtlDebuggerAction, RtlDebuggerObservation
 
+from .graders import RtlGrader
+_rtl_grader_instance = RtlGrader()
+
 # Tasks directory is usually at the project root.
 # We first try the current working directory (e.g. /app/env in Docker), 
 # then fall back to the package-relative path.
@@ -87,28 +90,7 @@ def _levenshtein_line_distance(original: str, modified: str) -> int:
     return distance
 
 
-def grader(result_json: dict, step_count: int, max_steps: int = 10) -> float:
-    """
-    The Grader - evaluates the agent's final output.
 
-    Returns a float in [0.0, 1.0].
-    """
-    num_tests  = result_json.get("num_tests", 1)
-    num_passed = result_json.get("num_passed", 0)
-    passed_all = result_json.get("passed", False)
-
-    pass_rate       = num_passed / num_tests if num_tests > 0 else 0.0
-    step_efficiency = (step_count / max_steps)
-
-    if passed_all:
-        # Solved — difficulty determined by how many steps it needed
-        score = 1.0 - step_efficiency   
-    else:
-        # Not solved — difficulty = how far it got from a full solution
-        score = (pass_rate * 0.7)
-
-    # Clamp to (0, 1) range strictly
-    return max(0.01, min(0.99, score))
 
 
 class RtlDebuggerEnvironment(Environment):
@@ -351,7 +333,7 @@ class RtlDebuggerEnvironment(Environment):
                     feedback_lines.append(f"- Cycle {cycle}: [{inputs_str}] -> Expected: {expected}, Got: {actual}{state_info}")
 
         feedback = "\n".join(filter(None, feedback_lines))
-        final_score = grader(result_data, self._state.step_count, 8)
+        final_score = _rtl_grader_instance(self._state, self)
 
         return RtlDebuggerObservation(
             task_id=self._task_name,

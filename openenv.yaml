@@ -5,9 +5,15 @@ runtime: fastapi
 app: server.app:app
 port: 8000
 tasks:
-  - id: task0
-    grader: server.graders:RtlGrader
   - id: task1
+    description: "Easy — syntax/compilation errors"
+    max_steps: 10
     grader: server.graders:RtlGrader
   - id: task2
+    description: "Medium — logic errors in combinational circuit"
+    max_steps: 10
+    grader: server.graders:RtlGrader
+  - id: task3
+    description: "Hard — logic errors in sequential circuit"
+    max_steps: 10
     grader: server.graders:RtlGrader

@@ -1,7 +1,8 @@
-module gate (
-    input wire a,
-    input wire b,
-    output wire y
+module half_adder(
+    input a, b
+    output sum, carry
 );
-    assign y = a & b;
+    assign sum = a ^ b
+    
+    assign carry = a and b; 
 endmodule

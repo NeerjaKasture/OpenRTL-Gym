@@ -1,7 +1,8 @@
-### TASK: Debug Moore FSM (1101 Sequence Detector)
+### TASK: Debug Combinational Logic (XOR Gate)
 
 ### SPECIFICATION:
-- Detect the bit sequence '1101'.
-- Type: Moore Machine (Output depends only on state).
-- Behavior: Overlapping sequences are allowed.
-- Target: Output 'out' should be '1' ONLY when the full sequence has been seen.
+- Implement a 2-input XOR gate.
+- Inputs: 'a', 'b'.
+- Output: 'y'.
+- Behavior: 'y' should be '1' if 'a' and 'b' are different, '0' otherwise.
+

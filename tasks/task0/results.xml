@@ -1,6 +1,0 @@
-<testsuites name="results">
-  <testsuite name="all" package="all">
-    <property name="random_seed" value="1775586650" />
-    <testcase name="test_half_adder" classname="test_half_adder" file="/mnt/c/Users/npkas/Agentic-RL/rtl_debugger/tasks/task0/test_half_adder.py" lineno="12" time="0.016648054122924805" sim_time_ns="4.0" ratio_time="240.26832027725663" />
-  </testsuite>
-</testsuites>

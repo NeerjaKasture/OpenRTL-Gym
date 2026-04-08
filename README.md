@@ -111,8 +111,8 @@ The environment features curated hardware modules designed to test specific debu
 | Task Tier | Name | Description | Grading Focus |
 | :--- | :--- | :--- | :--- |
 | **Easy** | Task 1 | Syntax & Compilation | Compilation OK, Step Count |
-| **Medium** | Task 2 | Combinational Logic | Test Case Pass Rate |
-| **Hard** | Task 3 | Sequential Logic | Transition Accuracy, Reset Logic |
+| **Medium** | Task 2 | Combinational Logic | Test Case Pass Rate, Step Count |
+| **Hard** | Task 3 | Sequential Logic | Transition Accuracy, Test Case Pass Rate, Step Count |
 
 ---
 
@@ -120,11 +120,10 @@ The environment features curated hardware modules designed to test specific debu
 
 ```text
 .
-├── tasks/                   # Curated hardware debugging tasks
+├── tasks/         
 │   ├── task1/    # Syntax & basic logic
 │   ├── task2/      # Combinational logic
 │   └── task3/    # Sequential logic
-│   └── task4/    # Real system
 ├── server/                  
 ├── models.py                
 ├── inference.py             

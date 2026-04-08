@@ -1,0 +1,12 @@
+cocotb>=2.0.1
+fastapi>=0.135.2
+openai>=2.30.0
+openenv-core[core]>=0.2.3
+pydantic>=2.12.5
+uvicorn>=0.42.0
+python-dotenv
+
+# System dependencies (installed in Docker but listed here for context):
+# iverilog
+# make
+# verilator (v5.036)

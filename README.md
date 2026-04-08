@@ -5,7 +5,7 @@ colorFrom: blue
 colorTo: green
 sdk: docker
 pinned: false
-app_port: 8000
+app_port: 7860
 base_path: /web
 tags:
   - openenv
@@ -30,9 +30,9 @@ docker build -t rtl_debugger-env:latest .
 
 ### 2. Launch the Environment Server
 ```bash
-docker run -p 8000:8000 --rm rtl_debugger-env:latest
+docker run -p 7860:7860 --rm rtl_debugger-env:latest
 ```
-Access the interactive web-playground at: [http://localhost:8000/web](http://localhost:8000/web)
+Access the interactive web-playground at: [http://localhost:7860/web](http://localhost:7860/web)
 
 ### 3. Run the Inference Agent
 We provide a reference inference script that uses LLM to play the environment:

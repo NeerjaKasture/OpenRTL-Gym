@@ -30,7 +30,7 @@ class RtlDebuggerEnv(
 
     Example:
         >>> # Connect to a running server
-        >>> with RtlDebuggerEnv(base_url="http://localhost:8000") as client:
+        >>> with RtlDebuggerEnv(base_url="http://localhost:7860") as client:
         ...     result = client.reset()
         ...     print(result.observation.echoed_message)
         ...

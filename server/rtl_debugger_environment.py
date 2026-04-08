@@ -35,8 +35,7 @@ try:
 except ImportError:
     from models import RtlDebuggerAction, RtlDebuggerObservation
 
-from .graders import RtlGrader
-_rtl_grader_instance = RtlGrader()
+from .graders import get_grader
 
 # Tasks directory is usually at the project root.
 # We first try the current working directory (e.g. /app/env in Docker), 
@@ -307,8 +306,11 @@ class RtlDebuggerEnvironment(Environment):
         if passed_all:
             reward += 20.0
 
+        seq_count = result_data.get("sequence_correctness", "?")
+        trans_count = result_data.get("transition_correctness", "?")
+
         feedback_lines = [
-            f"Compiled: OK | Tests: {num_passed}/{num_tests} passed | First failure after: {progress_ratio:.2f} of sequence | Levenshtein distance: {lev_distance}"
+            f"Compiled: OK | Tests: {num_passed}/{num_tests} passed | Seq: {seq_count}/{num_tests} | Trans: {trans_count}/{num_tests} | First failure after: {progress_ratio:.2f} of sequence"
         ]
         
         # Parse failed test cases from result.json
@@ -320,11 +322,11 @@ class RtlDebuggerEnvironment(Environment):
                     inp = ft.get("inputs") or ft.get("input", {})
                     inputs_str = ", ".join(f"{k}={v}" for k, v in inp.items()) if isinstance(inp, dict) else str(inp)
                     cycle = ft.get("test_id", "?")
-                    expected = ft.get("expected_output", ft.get("expected_next_state", ft.get("expected", "?")))
-                    actual = ft.get("actual_output", ft.get("actual", "?"))
+                    expected = ft.get("expected_output", "?")
+                    actual = ft.get("actual_output", "?")
                     
                     state_info = ""
-                    if "actual_state" in ft or "transition_to" in ft:
+                    if "transition_to" in ft:
                         was_s  = ft.get("actual_state_meaning", ft.get("actual_state", "?"))
                         went_s = ft.get("transition_to_meaning", ft.get("transition_to", "?"))
                         exp_s  = ft.get("expected_next_state_meaning", ft.get("expected_next_state", "?"))
@@ -333,7 +335,8 @@ class RtlDebuggerEnvironment(Environment):
                     feedback_lines.append(f"- Cycle {cycle}: [{inputs_str}] -> Expected: {expected}, Got: {actual}{state_info}")
 
         feedback = "\n".join(filter(None, feedback_lines))
-        final_score = _rtl_grader_instance(self._state, self)
+        grader = get_grader(self._task_name)
+        final_score = grader(self._state, self)
 
         return RtlDebuggerObservation(
             task_id=self._task_name,

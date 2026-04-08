@@ -16,10 +16,23 @@ FROM ${BASE_IMAGE} AS builder
 WORKDIR /app
 
 # Ensure git, iverilog, and make are available
-ARG DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends git iverilog make && \
+    apt-get install -y --no-install-recommends \
+        git make autoconf g++ flex bison help2man \
+        libfl-dev zlib1g-dev python3 \
+        iverilog && \
     rm -rf /var/lib/apt/lists/*
+
+# Install Verilator (required version)
+RUN git clone https://github.com/verilator/verilator && \
+    cd verilator && \
+    git checkout v5.036 && \
+    autoconf && \
+    ./configure && \
+    make -j$(nproc) && \
+    make install && \
+    cd .. && \
+    rm -rf verilator
 
 # Build argument to control whether we're building standalone or in-repo
 ARG BUILD_MODE=in-repo
@@ -61,7 +74,9 @@ FROM ${BASE_IMAGE}
 # Install runtime dependencies (iverilog and make)
 ARG DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends iverilog make && \
+    apt-get install -y --no-install-recommends \
+        git make \
+        iverilog && \
     rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -72,6 +87,8 @@ COPY --from=builder /app/env/.venv /app/.venv
 # Copy the environment code
 COPY --from=builder /app/env /app/env
 
+COPY --from=builder /usr/local/bin/verilator /usr/local/bin/verilator
+COPY --from=builder /usr/local/share/verilator /usr/local/share/verilator
 # Set PATH to use the virtual environment
 ENV PATH="/app/.venv/bin:$PATH"
 
@@ -82,8 +99,8 @@ ENV ENABLE_WEB_INTERFACE=true
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
+    CMD curl -f http://localhost:7860/health || exit 1
 
 # Run the FastAPI server
 # The module path is constructed to work with the /app/env structure
-CMD ["sh", "-c", "cd /app/env && uvicorn server.app:app --host 0.0.0.0 --port 8000"]
+CMD ["sh", "-c", "cd /app/env && uvicorn server.app:app --host 0.0.0.0 --port 7860"]

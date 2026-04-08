@@ -1,6 +1,6 @@
 <testsuites name="results">
   <testsuite name="all" package="all">
-    <property name="random_seed" value="1775630252" />
-    <testcase name="test_half_adder" classname="test_half_adder" file="/mnt/c/Users/npkas/Agentic-RL/rtl_debugger/tasks/task0/test_half_adder.py" lineno="1" time="0.01133418083190918" sim_time_ns="4.0" ratio_time="352.91478575485394" />
+    <property name="random_seed" value="1775636841" />
+    <testcase name="test_half_adder" classname="test_half_adder" file="/mnt/c/Users/npkas/Agentic-RL/rtl_debugger/tasks/task0/test_half_adder.py" lineno="1" time="0.0024442672729492188" sim_time_ns="4.0" ratio_time="1636.4822473663676" />
   </testsuite>
 </testsuites>

@@ -50,10 +50,11 @@ async def test_moore_1101(dut):
     dut.reset.value = 1
     dut.inp.value = 0
     await RisingEdge(dut.clk)
-    await RisingEdge(dut.clk)
-    dut.reset.value = 0
 
-    test_seq = [0, 1, 1, 0, 1, 1, 1, 0, 1, 1, 0, 1, 0]
+    await Timer(1, units="ns")
+    
+
+    test_seq = [0, 1, 1, 0, 1, 1, 1, 0, 1, 1, 0, 1, 0, 1, 1, 0, 1]  # slightly extended sequence to heavily test overlaps
     results = []
     passed = True
     first_error_cycle = None
@@ -114,12 +115,18 @@ async def test_moore_1101(dut):
     #         f"State {err['expected_next_state']} ({STATE_MAP.get(err['expected_next_state'])})."
     #     )
 
+    # Calculate new detailed grading metrics based on tracking arrays
+    
+    seq_correct = sum(1 for r in results if r["actual_output"] == r["expected_output"])
+    trans_correct = sum(1 for r in results if r["transition_to"] == r["expected_next_state"])
+    
     summary = {
         "passed": passed,
-        # "first_error_hint": error_msg,
         "num_tests": len(test_seq),
         "num_passed": sum(1 for r in results if r["pass"]),
         "results": results,
+        "sequence_correctness": seq_correct,
+        "transition_correctness": trans_correct,
         "simulation_time": get_sim_time("ns")
     }
 

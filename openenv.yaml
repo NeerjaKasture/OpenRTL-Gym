@@ -3,23 +3,23 @@ name: RTL Code Debugging Environment
 type: space
 runtime: fastapi
 app: server.app:app
-port: 8000
+port: 7860
 tasks:
   - id: task1
     description: "Easy — syntax/compilation errors"
     difficulty: easy
     max_steps: 10
-    grader: server.graders:RtlGrader
+    grader: server.graders:Task1Grader
   - id: task2
     description: "Medium — logic errors in combinational circuit"
     difficulty: medium
     max_steps: 10
-    grader: server.graders:RtlGrader
+    grader: server.graders:Task2Grader
   - id: task3
     description: "Hard — logic errors in sequential circuit"
     difficulty: hard
     max_steps: 10
-    grader: server.graders:RtlGrader
+    grader: server.graders:Task3Grader
 
 constraints:
   max_runtime_seconds: 1200

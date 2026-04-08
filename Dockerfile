@@ -15,24 +15,9 @@ FROM ${BASE_IMAGE} AS builder
 
 WORKDIR /app
 
-# Ensure git, iverilog, and make are available
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-        git make autoconf g++ flex bison help2man \
-        libfl-dev zlib1g-dev python3 \
-        iverilog && \
+    apt-get install -y --no-install-recommends git iverilog make && \
     rm -rf /var/lib/apt/lists/*
-
-# Install Verilator (required version)
-RUN git clone https://github.com/verilator/verilator && \
-    cd verilator && \
-    git checkout v5.036 && \
-    autoconf && \
-    ./configure && \
-    make -j$(nproc) && \
-    make install && \
-    cd .. && \
-    rm -rf verilator
 
 # Build argument to control whether we're building standalone or in-repo
 ARG BUILD_MODE=in-repo
@@ -87,8 +72,6 @@ COPY --from=builder /app/env/.venv /app/.venv
 # Copy the environment code
 COPY --from=builder /app/env /app/env
 
-COPY --from=builder /usr/local/bin/verilator /usr/local/bin/verilator
-COPY --from=builder /usr/local/share/verilator /usr/local/share/verilator
 # Set PATH to use the virtual environment
 ENV PATH="/app/.venv/bin:$PATH"
 

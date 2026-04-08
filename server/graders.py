@@ -6,13 +6,16 @@ class Task1Grader:
     """
     Grader for Task 1 (Syntax/Compilation Errors).
     Evaluates based on:
-    - Linting and Compilation passed.
+    - Compilation passed.
     - Number of steps needed.
     """
     def __init__(self, max_steps: int = 10):
         self.max_steps = max_steps
 
-    def __call__(self, state: State, env: "RtlDebuggerEnvironment") -> float:
+    def __call__(self, state: State = None, env: "RtlDebuggerEnvironment" = None) -> float:
+        if state is None or env is None:
+            return 0.01
+
         result_path = os.path.join(env._task_dir, "result.json")
         if not os.path.exists(result_path):
             return 0.01
@@ -40,7 +43,10 @@ class Task2Grader:
     def __init__(self, max_steps: int = 10):
         self.max_steps = max_steps
 
-    def __call__(self, state: State, env: "RtlDebuggerEnvironment") -> float:
+    def __call__(self, state: State = None, env: "RtlDebuggerEnvironment" = None) -> float:
+        if state is None or env is None:
+            return 0.01
+
         result_path = os.path.join(env._task_dir, "result.json")
         if not os.path.exists(result_path):
             return 0.01
@@ -77,7 +83,10 @@ class Task3Grader:
     def __init__(self, max_steps: int = 10):
         self.max_steps = max_steps
 
-    def __call__(self, state: State, env: "RtlDebuggerEnvironment") -> float:
+    def __call__(self, state: State = None, env: "RtlDebuggerEnvironment" = None) -> float:
+        if state is None or env is None:
+            return 0.01
+
         result_path = os.path.join(env._task_dir, "result.json")
         if not os.path.exists(result_path):
             # No result.json usually means compilation error or simulation timeout (deadlock/oscillation)

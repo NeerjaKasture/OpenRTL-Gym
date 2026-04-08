@@ -213,6 +213,10 @@ class RtlDebuggerEnvironment(Environment):
         # Initialise design_active.v from the buggy design
         shutil.copy(buggy_path, self._active_design_path)
 
+        result_path = os.path.join(self._task_dir, "result.json")
+        if os.path.exists(result_path):
+            os.remove(result_path)
+
         # Run baseline simulation to provide initial feedback
         baseline_obs = self._run_evaluation(lev_distance=0)
         
@@ -257,30 +261,8 @@ class RtlDebuggerEnvironment(Environment):
         Internal helper to compile, simulate, and score the current design_active.v.
         Used by both reset() and step().
         """
-        # --- 1. Compile check (mandatory gate) ---
-        compile_cmd = ["iverilog", "-t", "null", "design_active.v"]
-        compile_res = subprocess.run(
-            compile_cmd, cwd=self._task_dir, capture_output=True, text=True
-        )
-
-        if compile_res.returncode != 0:
-            feedback = compile_res.stderr or compile_res.stdout
-            return RtlDebuggerObservation(
-                task_id=self._task_name,
-
-                numbered_code=_numbered_code(self._active_design_path),
-                task_context=self._task_context,
-                feedback=f"[Compile Error]\n{feedback}",
-                compiled=False,
-                passed_tests=False,
-                pass_rate=0.0,
-                progress_ratio=0,
-                levenshtein_distance=lev_distance,
-                reward=-2.0,
-                done=False,
-            )
-
-        # --- 2. Run cocotb testbench via make in the task dir ---
+        # --- 2. Run simulation via make ---
+        # Note: 'make' handles both compilation and simulation via cocotb.
         try:
             make_res = subprocess.run(
                 ["make"],
@@ -296,8 +278,8 @@ class RtlDebuggerEnvironment(Environment):
 
                 numbered_code=_numbered_code(self._active_design_path),
                 task_context=self._task_context,
-                feedback="[Simulation Timeout] Your design likely contains an infinite loop (e.g., an always @ block without a state change or sensitivity list issue). Simulation killed after 60s.",
-                compiled=True,
+                feedback="[Simulation Timeout] Your design likely contains an infinite loop. Simulation killed after 60s.",
+                compiled=False,
                 passed_tests=False,
                 pass_rate=0.0,
                 progress_ratio=0,
@@ -309,13 +291,26 @@ class RtlDebuggerEnvironment(Environment):
         # --- 3. Parse result.json (written by cocotb into the task dir) ---
         result_path = os.path.join(self._task_dir, "result.json")
         if not os.path.exists(result_path):
+            error_lines = []
+            for line in make_feedback.splitlines():
+                lower_line = line.lower()
+                if any(kw in lower_line for kw in ["error", "exception", "fatal", "traceback", "assert"]):
+                    error_lines.append(line)
+            
+            # If no explicit error keyword found, just keep the tail of the log
+            if not error_lines:
+                error_lines = make_feedback.splitlines()[-15:]
+            
+            filtered_feedback = "\n".join(error_lines)
+
+
             return RtlDebuggerObservation(
                 task_id=self._task_name,
 
                 numbered_code=_numbered_code(self._active_design_path),
                 task_context=self._task_context,
-                feedback=f"=== Simulation/Build Error ===\nSimulation crashed before producing results.\nError Log:\n{make_feedback}",
-                compiled=True,
+                feedback=f"=== Simulation/Build Error ===\nSimulation crashed before producing results.\nError Log:\n{filtered_feedback}",
+                compiled=False,
                 passed_tests=False,
                 pass_rate=0.0,
                 progress_ratio=0,

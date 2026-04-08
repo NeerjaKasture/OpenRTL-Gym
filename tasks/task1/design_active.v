@@ -4,5 +4,5 @@ module half_adder(
 );
     assign sum = a ^ b;
     
-     assign carry = a & b;
+    assign carry = a & b;
 endmodule

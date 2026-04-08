@@ -62,7 +62,7 @@ else:
 # MODEL_NAME = os.getenv("MODEL_NAME") or "Qwen/Qwen2.5-72B-Instruct:novita"
 
 TASK_NAME = os.getenv("RTL_DEBUGGER_TASK_NAME", "unknown-task")
-IMAGE_NAME = os.getenv("IMAGE_NAME")
+IMAGE_NAME = os.getenv("LOCAL_IMAGE_NAME")
 
 MAX_STEPS = 8
 TEMPERATURE = 0.3

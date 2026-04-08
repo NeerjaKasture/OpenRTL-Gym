@@ -17,3 +17,5 @@
 
 # Local scripts
 validate_submission.sh
+
+outputs/

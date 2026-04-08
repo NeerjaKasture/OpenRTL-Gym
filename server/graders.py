@@ -118,6 +118,7 @@ class Task3Grader:
             score += 0.2
             step_efficiency = (state.step_count / self.max_steps)
             score = 1.0 - step_efficiency
+        
             
         return max(0.01, min(0.99, score))
 

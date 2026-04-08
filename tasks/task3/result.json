@@ -1,6 +1,6 @@
 {
   "passed": false,
-  "num_tests": 17,
+  "num_tests": 10,
   "num_passed": 2,
   "results": [
     {
@@ -83,84 +83,32 @@
     },
     {
       "test_id": 6,
-      "input": 1,
+      "input": 0,
       "actual_state": 0,
       "actual_state_meaning": "S0: Seen nothing (Reset/Idle)",
       "actual_output": 0,
       "expected_output": 0,
       "transition_to": 0,
       "transition_to_meaning": "S0: Seen nothing (Reset/Idle)",
-      "expected_next_state": 2,
-      "expected_next_state_meaning": "S2: Seen '11'",
+      "expected_next_state": 3,
+      "expected_next_state_meaning": "S3: Seen '110'",
       "pass": false
     },
     {
       "test_id": 7,
-      "input": 0,
+      "input": 1,
       "actual_state": 0,
       "actual_state_meaning": "S0: Seen nothing (Reset/Idle)",
       "actual_output": 0,
-      "expected_output": 0,
+      "expected_output": 1,
       "transition_to": 0,
       "transition_to_meaning": "S0: Seen nothing (Reset/Idle)",
-      "expected_next_state": 3,
-      "expected_next_state_meaning": "S3: Seen '110'",
+      "expected_next_state": 4,
+      "expected_next_state_meaning": "S4: Seen '1101' (Pattern Detected)",
       "pass": false
     },
     {
       "test_id": 8,
-      "input": 1,
-      "actual_state": 0,
-      "actual_state_meaning": "S0: Seen nothing (Reset/Idle)",
-      "actual_output": 0,
-      "expected_output": 1,
-      "transition_to": 0,
-      "transition_to_meaning": "S0: Seen nothing (Reset/Idle)",
-      "expected_next_state": 4,
-      "expected_next_state_meaning": "S4: Seen '1101' (Pattern Detected)",
-      "pass": false
-    },
-    {
-      "test_id": 9,
-      "input": 1,
-      "actual_state": 0,
-      "actual_state_meaning": "S0: Seen nothing (Reset/Idle)",
-      "actual_output": 0,
-      "expected_output": 0,
-      "transition_to": 0,
-      "transition_to_meaning": "S0: Seen nothing (Reset/Idle)",
-      "expected_next_state": 2,
-      "expected_next_state_meaning": "S2: Seen '11'",
-      "pass": false
-    },
-    {
-      "test_id": 10,
-      "input": 0,
-      "actual_state": 0,
-      "actual_state_meaning": "S0: Seen nothing (Reset/Idle)",
-      "actual_output": 0,
-      "expected_output": 0,
-      "transition_to": 0,
-      "transition_to_meaning": "S0: Seen nothing (Reset/Idle)",
-      "expected_next_state": 3,
-      "expected_next_state_meaning": "S3: Seen '110'",
-      "pass": false
-    },
-    {
-      "test_id": 11,
-      "input": 1,
-      "actual_state": 0,
-      "actual_state_meaning": "S0: Seen nothing (Reset/Idle)",
-      "actual_output": 0,
-      "expected_output": 1,
-      "transition_to": 0,
-      "transition_to_meaning": "S0: Seen nothing (Reset/Idle)",
-      "expected_next_state": 4,
-      "expected_next_state_meaning": "S4: Seen '1101' (Pattern Detected)",
-      "pass": false
-    },
-    {
-      "test_id": 12,
       "input": 0,
       "actual_state": 0,
       "actual_state_meaning": "S0: Seen nothing (Reset/Idle)",
@@ -173,7 +121,7 @@
       "pass": true
     },
     {
-      "test_id": 13,
+      "test_id": 9,
       "input": 1,
       "actual_state": 0,
       "actual_state_meaning": "S0: Seen nothing (Reset/Idle)",
@@ -184,48 +132,9 @@
       "expected_next_state": 1,
       "expected_next_state_meaning": "S1: Seen '1'",
       "pass": false
-    },
-    {
-      "test_id": 14,
-      "input": 1,
-      "actual_state": 0,
-      "actual_state_meaning": "S0: Seen nothing (Reset/Idle)",
-      "actual_output": 0,
-      "expected_output": 0,
-      "transition_to": 0,
-      "transition_to_meaning": "S0: Seen nothing (Reset/Idle)",
-      "expected_next_state": 2,
-      "expected_next_state_meaning": "S2: Seen '11'",
-      "pass": false
-    },
-    {
-      "test_id": 15,
-      "input": 0,
-      "actual_state": 0,
-      "actual_state_meaning": "S0: Seen nothing (Reset/Idle)",
-      "actual_output": 0,
-      "expected_output": 0,
-      "transition_to": 0,
-      "transition_to_meaning": "S0: Seen nothing (Reset/Idle)",
-      "expected_next_state": 3,
-      "expected_next_state_meaning": "S3: Seen '110'",
-      "pass": false
-    },
-    {
-      "test_id": 16,
-      "input": 1,
-      "actual_state": 0,
-      "actual_state_meaning": "S0: Seen nothing (Reset/Idle)",
-      "actual_output": 0,
-      "expected_output": 1,
-      "transition_to": 0,
-      "transition_to_meaning": "S0: Seen nothing (Reset/Idle)",
-      "expected_next_state": 4,
-      "expected_next_state_meaning": "S4: Seen '1101' (Pattern Detected)",
-      "pass": false
     }
   ],
-  "sequence_correctness": 13,
+  "sequence_correctness": 8,
   "transition_correctness": 2,
-  "simulation_time": 171.0
+  "simulation_time": 101.0
 }

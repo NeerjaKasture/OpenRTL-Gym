@@ -1,7 +1,7 @@
 <testsuites name="results">
   <testsuite name="all" package="all">
-    <property name="random_seed" value="1775636730" />
-    <testcase name="test_moore_1101" classname="test_moore_1101" file="/mnt/c/Users/npkas/Agentic-RL/rtl_debugger/tasks/task3/test_moore_1101.py" lineno="42" time="0.0076448917388916016" sim_time_ns="171.0" ratio_time="22367.877249337285">
+    <property name="random_seed" value="1775649585" />
+    <testcase name="test_moore_1101" classname="test_moore_1101" file="/mnt/c/Users/npkas/Agentic-RL/rtl_debugger/tasks/task3/test_moore_1101.py" lineno="42" time="0.005877017974853516" sim_time_ns="101.0" ratio_time="17185.586369168355">
       <failure error_type="AssertionError" error_msg="assert False" />
     </testcase>
   </testsuite>

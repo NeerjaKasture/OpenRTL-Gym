@@ -58,7 +58,7 @@ class RtlDebuggerEnv(
             Dictionary representation suitable for JSON encoding
         """
         return {
-            "fixed_code": action.fixed_code,
+            "edits": [e.model_dump() for e in action.edits],
         }
 
     def _parse_result(self, payload: Dict) -> StepResult[RtlDebuggerObservation]:
@@ -74,7 +74,7 @@ class RtlDebuggerEnv(
         obs_data = payload.get("observation", {})
         observation = RtlDebuggerObservation(
             task_id=obs_data.get("task_id", ""),
-            design_code=obs_data.get("design_code", ""),
+            numbered_code=obs_data.get("numbered_code", ""),
             task_context=obs_data.get("task_context", ""),
             feedback=obs_data.get("feedback", ""),
             compiled=obs_data.get("compiled", False),

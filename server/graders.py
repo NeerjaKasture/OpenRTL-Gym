@@ -102,12 +102,8 @@ class Task3Grader:
         passed_all = result_json.get("passed", False)
         
         score = 0.0
-        # Partial credit based on sequential milestones
         score += seq_rate * 0.4
         score += trans_rate * 0.4
-        # Note: reset_working was removed from testbench or ignored for now, 
-        # but we could add it back if needed. For now let's use the remaining 0.2
-        # as a bonus for passing everything.
         
         if passed_all:
             score += 0.2

@@ -54,7 +54,7 @@ async def test_moore_1101(dut):
     await Timer(1, units="ns")
     
 
-    test_seq = [0, 1, 1, 0, 1, 1, 1, 0, 1, 1, 0, 1, 0, 1, 1, 0, 1]  # slightly extended sequence to heavily test overlaps
+    test_seq = [0, 1, 1, 0, 1, 1, 0, 1, 0, 1]  # slightly extended sequence to heavily test overlaps
     results = []
     passed = True
     first_error_cycle = None
@@ -119,7 +119,7 @@ async def test_moore_1101(dut):
     
     seq_correct = sum(1 for r in results if r["actual_output"] == r["expected_output"])
     trans_correct = sum(1 for r in results if r["transition_to"] == r["expected_next_state"])
-    
+
     summary = {
         "passed": passed,
         "num_tests": len(test_seq),

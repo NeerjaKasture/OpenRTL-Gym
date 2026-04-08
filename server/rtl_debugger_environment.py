@@ -31,9 +31,9 @@ from openenv.core.env_server.interfaces import Environment
 from openenv.core.env_server.types import State
 
 try:
-    from ..models import RtlDebuggerAction, RtlDebuggerObservation
+    from ..models import EditOp, RtlDebuggerAction, RtlDebuggerObservation
 except ImportError:
-    from models import RtlDebuggerAction, RtlDebuggerObservation
+    from models import EditOp, RtlDebuggerAction, RtlDebuggerObservation
 
 from .graders import get_grader
 
@@ -89,7 +89,51 @@ def _levenshtein_line_distance(original: str, modified: str) -> int:
     return distance
 
 
+def _numbered_code(file_path: str) -> str:
+    """Return the contents of a file with 1-indexed line numbers prepended."""
+    lines = _read(file_path).splitlines()
+    return "\n".join(f"{i + 1:4d}| {line}" for i, line in enumerate(lines))
 
+
+def _apply_edits(file_path: str, edits: list[EditOp]) -> str:
+    """Apply a list of EditOp operations to a file and write back.
+
+    Line numbers in each EditOp refer to the file state BEFORE any edits
+    in this batch.  Operations are applied in reverse line-number order so
+    that earlier indices stay valid as later lines are modified.
+
+    Supports multi-line edits via ``end_line`` (range) and
+    newlines inside ``new_content``.
+
+    Returns the patched file content (also written to *file_path*).
+    """
+    lines = _read(file_path).splitlines()
+
+    # Sort by line_number descending so later edits don't shift earlier indices.
+    sorted_edits = sorted(edits, key=lambda e: e.line_number, reverse=True)
+
+    for edit in sorted_edits:
+        start = edit.line_number - 1          # 0-indexed start
+        end = (edit.end_line or edit.line_number) - 1  # 0-indexed end (inclusive)
+        end = min(end, len(lines) - 1)        # clamp to file length
+
+        if edit.op == "replace":
+            if 0 <= start < len(lines):
+                new_lines = edit.new_content.split("\n")
+                lines[start:end + 1] = new_lines
+        elif edit.op == "insert_after":
+            insert_pos = max(start + 1, 0) if edit.line_number > 0 else 0
+            new_lines = edit.new_content.split("\n")
+            for i, nl in enumerate(new_lines):
+                lines.insert(insert_pos + i, nl)
+        elif edit.op == "delete":
+            if 0 <= start < len(lines):
+                del lines[start:end + 1]
+
+    patched = "\n".join(lines) + "\n"
+    with open(file_path, "w") as f:
+        f.write(patched)
+    return patched
 
 
 class RtlDebuggerEnvironment(Environment):
@@ -116,7 +160,7 @@ class RtlDebuggerEnvironment(Environment):
         """Initialize the rtl_debugger environment."""
         self._state = State(episode_id=str(uuid4()), step_count=0)
         self._task_dir: str = ""
-        self._design_code: str = ""   # contents of design_buggy.v (immutable reference)
+
         self._task_context: str = ""  # contents of context.md
         self._task_name: str = ""
 
@@ -135,7 +179,7 @@ class RtlDebuggerEnvironment(Environment):
         if not tasks:
             return RtlDebuggerObservation(
                 task_id="",
-                design_code="",
+
                 feedback=f"No tasks found in {_TASKS_DIR}.",
                 compiled=False,
                 passed_tests=False,
@@ -158,7 +202,7 @@ class RtlDebuggerEnvironment(Environment):
         self._task_dir = selected_task_dir
         self._task_name = os.path.basename(self._task_dir)
         buggy_path = os.path.join(self._task_dir, "design_buggy.v")
-        self._design_code = _read(buggy_path)
+
         
         context_path = os.path.join(self._task_dir, "context.md")
         if os.path.exists(context_path):
@@ -178,19 +222,18 @@ class RtlDebuggerEnvironment(Environment):
 
     def step(self, action: RtlDebuggerAction) -> RtlDebuggerObservation:  # type: ignore[override]
         """
-        Compile and simulate the submitted Verilog code against the task testbench.
+        Apply the agent's line-edit operations, then compile and simulate.
         """
         self._state.step_count += 1
-        code = action.fixed_code
 
         try:
-            # --- Levenshtein vs the *previous* design_active.v (last agent attempt) ---
+            # --- Snapshot previous state for Levenshtein ---
             prev_active = _read(self._active_design_path)
-            lev_distance = _levenshtein_line_distance(prev_active, code)
 
-            # --- 1. Write agent's code to design_active.v ---
-            with open(self._active_design_path, "w") as f:
-                f.write(code)
+            # --- Apply edits to design_active.v ---
+            patched = _apply_edits(self._active_design_path, action.edits)
+
+            lev_distance = _levenshtein_line_distance(prev_active, patched)
 
             return self._run_evaluation(lev_distance=lev_distance)
 
@@ -198,12 +241,13 @@ class RtlDebuggerEnvironment(Environment):
             traceback.print_exc()
             return RtlDebuggerObservation(
                 task_id=self._task_name,
-                design_code=self._design_code,
+
+                numbered_code=_numbered_code(self._active_design_path),
                 feedback=f"[Internal Server Error] {type(exc).__name__}: {exc}",
                 compiled=False,
                 passed_tests=False,
                 pass_rate=0.0,
-                progress_ratio =0,
+                progress_ratio=0,
                 reward=-1.0,
                 done=False,
             )
@@ -223,13 +267,14 @@ class RtlDebuggerEnvironment(Environment):
             feedback = compile_res.stderr or compile_res.stdout
             return RtlDebuggerObservation(
                 task_id=self._task_name,
-                design_code=self._design_code,
+
+                numbered_code=_numbered_code(self._active_design_path),
                 task_context=self._task_context,
                 feedback=f"[Compile Error]\n{feedback}",
                 compiled=False,
                 passed_tests=False,
                 pass_rate=0.0,
-                progress_ratio =0,
+                progress_ratio=0,
                 levenshtein_distance=lev_distance,
                 reward=-2.0,
                 done=False,
@@ -248,13 +293,14 @@ class RtlDebuggerEnvironment(Environment):
         except subprocess.TimeoutExpired:
             return RtlDebuggerObservation(
                 task_id=self._task_name,
-                design_code=self._design_code,
+
+                numbered_code=_numbered_code(self._active_design_path),
                 task_context=self._task_context,
                 feedback="[Simulation Timeout] Your design likely contains an infinite loop (e.g., an always @ block without a state change or sensitivity list issue). Simulation killed after 60s.",
                 compiled=True,
                 passed_tests=False,
                 pass_rate=0.0,
-                progress_ratio =0,
+                progress_ratio=0,
                 levenshtein_distance=lev_distance,
                 reward=-5.0,
                 done=False,
@@ -265,13 +311,14 @@ class RtlDebuggerEnvironment(Environment):
         if not os.path.exists(result_path):
             return RtlDebuggerObservation(
                 task_id=self._task_name,
-                design_code=self._design_code,
+
+                numbered_code=_numbered_code(self._active_design_path),
                 task_context=self._task_context,
                 feedback=f"=== Simulation/Build Error ===\nSimulation crashed before producing results.\nError Log:\n{make_feedback}",
                 compiled=True,
                 passed_tests=False,
                 pass_rate=0.0,
-                progress_ratio =0,
+                progress_ratio=0,
                 levenshtein_distance=lev_distance,
                 reward=-3.0,
                 done=False,
@@ -302,16 +349,21 @@ class RtlDebuggerEnvironment(Environment):
         reward -= min(lev_distance * 0.01, 1.0) 
 
         if lev_distance == 0 and self._state.step_count > 0:
-            reward -= 2.0
+            reward -= 1.5
         if passed_all:
             reward += 20.0
 
-        seq_count = result_data.get("sequence_correctness", "?")
-        trans_count = result_data.get("transition_correctness", "?")
+        seq_count = result_data.get("sequence_correctness")
+        trans_count = result_data.get("transition_correctness")
 
-        feedback_lines = [
-            f"Compiled: OK | Tests: {num_passed}/{num_tests} passed | Seq: {seq_count}/{num_tests} | Trans: {trans_count}/{num_tests} | First failure after: {progress_ratio:.2f} of sequence"
-        ]
+        if seq_count and trans_count:
+            feedback_lines = [
+                f"Compiled: OK | Tests: {num_passed}/{num_tests} passed | Seq: {seq_count}/{num_tests} | Trans: {trans_count}/{num_tests} | First failure after: {progress_ratio:.2f} of sequence"
+            ]
+        else:
+            feedback_lines = [
+                f"Compiled: OK | Tests: {num_passed}/{num_tests} passed | First failure after: {progress_ratio:.2f} of sequence"
+            ]
         
         # Parse failed test cases from result.json
         if "results" in result_data:
@@ -327,10 +379,10 @@ class RtlDebuggerEnvironment(Environment):
                     
                     state_info = ""
                     if "transition_to" in ft:
-                        was_s  = ft.get("actual_state_meaning", ft.get("actual_state", "?"))
-                        went_s = ft.get("transition_to_meaning", ft.get("transition_to", "?"))
-                        exp_s  = ft.get("expected_next_state_meaning", ft.get("expected_next_state", "?"))
-                        state_info = f" | was state {was_s}, went to state {went_s} (expected state {exp_s})"
+                        was_s  = ft.get("actual_state_meaning", f"S{ft.get('actual_state', '?')}")
+                        went_s = ft.get("transition_to_meaning", f"S{ft.get('transition_to', '?')}")
+                        exp_s  = ft.get("expected_next_state_meaning", f"S{ft.get('expected_next_state', '?')}")
+                        state_info = f" | was {was_s}, went to {went_s} (expected {exp_s})"
                     
                     feedback_lines.append(f"- Cycle {cycle}: [{inputs_str}] -> Expected: {expected}, Got: {actual}{state_info}")
 
@@ -338,9 +390,12 @@ class RtlDebuggerEnvironment(Environment):
         grader = get_grader(self._task_name)
         final_score = grader(self._state, self)
 
+        print(feedback)
+
         return RtlDebuggerObservation(
             task_id=self._task_name,
-            design_code=self._design_code,
+
+            numbered_code=_numbered_code(self._active_design_path),
             task_context=self._task_context,
             feedback=feedback,
             compiled=True,

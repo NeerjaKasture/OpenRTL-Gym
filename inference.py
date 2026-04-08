@@ -30,32 +30,12 @@ from openai import OpenAI
 
 try:
     from .client import RtlDebuggerEnv
-    from .models import RtlDebuggerAction
+    from .models import EditOp, RtlDebuggerAction
 except ImportError:
     from client import RtlDebuggerEnv  # type: ignore
-    from models import RtlDebuggerAction  # type: ignore
+    from models import EditOp, RtlDebuggerAction  # type: ignore
 
 # --- Configuration -------------------------------------------------------------
-# OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-# GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-# HF_TOKEN = os.getenv("HF_TOKEN")
-
-# if OPENAI_API_KEY:
-#     # Use OpenAI directly
-#     API_BASE_URL = os.getenv("API_BASE_URL") # use default (None) for OpenAI
-#     API_KEY = OPENAI_API_KEY
-#     MODEL_NAME = "gpt-4o"
-# elif GEMINI_API_KEY:
-#     # Set defaults for Gemini (which uses an OpenAI-compatible endpoint)
-#     API_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai/"
-#     API_KEY = GEMINI_API_KEY
-#     MODEL_NAME = "gemini-2.5-flash"
-# else:
-#     # Fall back to Hugging Face router
-#     API_BASE_URL = "https://router.huggingface.co/v1"
-#     API_KEY = HF_TOKEN or os.getenv("API_KEY")
-#     MODEL_NAME = os.getenv("MODEL_NAME") or "Qwen/Qwen2.5-72B-Instruct:novita"
-
 
 API_BASE_URL = os.getenv("API_BASE_URL") or "https://router.huggingface.co/v1"
 API_KEY = os.getenv("API_KEY") or os.getenv("HF_TOKEN")
@@ -75,11 +55,16 @@ ENV_BASE_URL = os.getenv("ENV_BASE_URL", "http://localhost:7860")
 
 # --- Prompts -------------------------------------------------------------------
 SYSTEM_PROMPT = (
-    "You are an expert RTL hardware engineer specialist. Your goal is to debug and fix buggy Verilog modules."
+    "You are an expert RTL hardware engineer. Your goal is to debug Verilog modules by making targeted edits."
     "\n\nRules:"
-    "\n1. Analyze the provided Verilog code, the task context, and the simulator feedback."
-    "\n2. Identify the logical or syntax errors."
-    "\n3. Provide the CORRECTED Verilog module in a ```verilog ... ``` block."
+    "\n1. Analyse the numbered source code and simulator feedback to identify bugs."
+    "\n2. Respond ONLY with a JSON array of edit operations."
+    "\n3. Operations:"
+    '\n   {"op": "replace"|"insert_after"|"delete", "line_number": <int>, "end_line": <int|null>, "new_content": "<string>"}'
+    "\n   - replace: replaces lines line_number through end_line (inclusive). Use \\n for multi-line replacement."
+    "\n   - insert_after: inserts new_content after line_number. Use \\n for multi-line."
+    "\n   - delete: removes lines line_number through end_line."
+    "\n\n4. Line numbers refer to the CURRENT design shown to you. Output ONLY the JSON array."
 ).strip()
 
 
@@ -94,7 +79,7 @@ def _load_file(path: str) -> str:
 
 def _build_user_prompt(
     step: int,
-    initial_design: str,
+    numbered_code: str,
     task_context: str,
     history: List[Tuple[str, str, float]],
     latest_feedback: str,
@@ -103,33 +88,27 @@ def _build_user_prompt(
     Build the user prompt for the current step.
     Args:
         step: Current step number (1-indexed).
-        initial_design: The original buggy Verilog design.
+        numbered_code: The current design_active.v with line numbers.
         task_context: Instructions or specifications for the task.
-        history: List of (code_submitted, feedback_received) from previous steps.
-        latest_feedback: The most recent feedback from the environment (before this step's submission).
+        history: List of (edits_json, feedback_received, reward) from previous steps.
+        latest_feedback: The most recent feedback from the environment.
     """
-    # 1. HISTORY SECTION (Last 3-4 attempts)
+    # 1. HISTORY SECTION (Last 3 attempts)
     history_section = ""
     if history:
         history_lines = []
-        # Calculate exactly which attempts to show
-        start_idx = max(0, len(history) - 3) 
-        for i, (code, hist_feedback, hist_reward) in enumerate(history[start_idx:], start=start_idx + 1):
+        start_idx = max(0, len(history) - 3)
+        for i, (edits_str, hist_feedback, hist_reward) in enumerate(history[start_idx:], start=start_idx + 1):
             history_lines.append(
                 f"### Attempt {i} ###\n"
-                f"--- Submittal ---\n```verilog\n{code.strip()}\n```\n"
+                f"--- Edits Applied ---\n{edits_str}\n"
                 f"--- Result ---\n{hist_feedback.strip() or '(no output)'}\n"
                 f"--- Reward ---\n{hist_reward:0.2f}"
             )
         history_section = "\n\n" + "\n\n".join(history_lines)
 
-    # 2. CURRENT INSTRUCTION
-    current_feedback = latest_feedback if not history else "" # latest_feedback is in history[-1]
-    
     context_section = f"### Task Context ###\n{task_context.strip()}\n" if task_context else ""
 
-    # 3. BUILD FEEDBACK SECTION
-    # Move \n out of f-string expression for Python < 3.12 compatibility
     if history:
         progress_info = history_section
     else:
@@ -138,54 +117,53 @@ def _build_user_prompt(
     return textwrap.dedent(
         f"""
         --- INSTRUCTIONS ---
-        You are an expert RTL engineer. Your goal is to fix the provided Verilog design.
-        1. Examine the 'Task Context' and 'Original Design' to understand the intended behavior.
-        2. Study your 'Previous Attempts' and the 'Latest Result' to pinpoint where the logic is failing.
-        3. Provide the FULL corrected Verilog module in a ```verilog block.
+        You are an expert RTL engineer. Fix the Verilog design by making targeted edits.
+        
+        APPROACH:
+        1. Read the 'Task Context' carefully to understand the INTENDED behavior.
+        2. Look at 'Failed Test Cases': the inputs, expected outputs, and actual outputs tell you exactly which logic path is wrong.
+        3. Make the MINIMUM edits needed to fix the bug. 
         
         {context_section}
-        ### Original (buggy) starting point ###
-        ```verilog
-        {initial_design.strip()}
-        ```
+        ### Current Design (with line numbers) ###
+        {numbered_code.strip()}
 
         {progress_info}
 
-        --- Current Objective ---
-        Based on the feedback above, provide your NEXT corrected attempt. 
-        Focus on fixing the first error cycle reported. 
-        Reply with the corrected design module in a ```verilog block.
+        --- Respond ONLY with a JSON array of edits ---
         """
     ).strip()
 
 
-def _extract_verilog(response_text: str) -> str:
+def _extract_edits(response_text: str) -> list[dict]:
     """
-    Extract the Verilog code block from the LLM response.
-    More robustly strips fences even when the response is truncated.
+    Extract a JSON array of edit operations from the LLM response.
+    Handles optional markdown fences and leading/trailing text.
     """
     cleaned = response_text.strip()
 
-    # Case 1: Standard fenced block (most common)
-    match = re.search(r"```(?:verilog)?\s*(.*?)```", cleaned, re.DOTALL | re.IGNORECASE)
+    # Strip markdown code fences if present
+    match = re.search(r"```(?:json)?\s*(.*?)```", cleaned, re.DOTALL | re.IGNORECASE)
     if match:
-        return match.group(1).strip()
+        cleaned = match.group(1).strip()
+    else:
+        # Try to find the JSON array directly
+        match = re.search(r"(\[.*\])", cleaned, re.DOTALL)
+        if match:
+            cleaned = match.group(1).strip()
 
-    # Case 2: Opening fence exists but closing fence is missing (likely truncation)
-    match = re.search(r"```(?:verilog)?\s*(.*)", cleaned, re.DOTALL | re.IGNORECASE)
-    if match:
-        return match.group(1).strip()
+    try:
+        edits = json.loads(cleaned)
+        if isinstance(edits, list):
+            return edits
+    except json.JSONDecodeError:
+        pass
 
-    # Case 3: No fences at all
-    # Still strip any occasional leading/trailing code-block markers if they leak through
-    lines = cleaned.splitlines()
-    if lines and (lines[0].startswith("```") or lines[-1].startswith("```")):
-        return "\n".join([line for line in lines if not line.strip().startswith("```")]).strip()
-
-    return cleaned
+    # Last resort: return empty edits (no-op)
+    return []
 
 
-def _get_llm_response(llm: OpenAI, messages: List[dict], max_retries: int = 4) -> str:
+def _get_llm_response(llm: OpenAI, messages: List[dict], max_retries: int = 6) -> str:
     """Gets LLM response with basic retry logic for rate limits and temporary failures."""
     for attempt in range(max_retries):
         try:
@@ -200,9 +178,17 @@ def _get_llm_response(llm: OpenAI, messages: List[dict], max_retries: int = 4) -
         except Exception as exc:
             # Check for rate limit or retryable errors
             err_msg = str(exc).lower()
-            if "rate limit" in err_msg or "too many requests" in err_msg or "temporary" in err_msg or attempt < max_retries - 1:
-                wait_time = (2 ** attempt) * 2  # Exponential backoff: 2, 4, 8, 16...
-                print(f"[RETRY] Attempt {attempt + 1} failed: {exc}. Retrying in {wait_time}s...", flush=True)
+            if "rate limit" in err_msg or "too many requests" in err_msg or "temporary" in err_msg or "quota" in err_msg or attempt < max_retries - 1:
+                # Default exponential backoff
+                wait_time = (2 ** attempt) * 2
+                
+                # Check if the API explicitly tells us how long to wait
+                match = re.search(r"retry in (\d+(?:\.\d+)?)s", err_msg)
+                if match:
+                    # add a small buffer of 2s to the requested retry time
+                    wait_time = float(match.group(1)) + 2.0
+                
+                print(f"[RETRY] Attempt {attempt + 1} failed: {exc}. Retrying in {wait_time:.2f}s...", flush=True)
                 time.sleep(wait_time)
             else:
                 raise exc
@@ -220,16 +206,16 @@ def run_task(env: RtlDebuggerEnv, llm: OpenAI, task_id: str) -> None:
     reset_options = {"TASK_NAME": task_id}
     result = env.reset(options=reset_options)
     obs = result.observation
-    initial_design = obs.design_code
     task_context = obs.task_context
     latest_feedback = obs.feedback
+    numbered_code = obs.numbered_code
 
     # Emit the START line using the actual task_id from the observation
     actual_task = obs.task_id
     print(f"[START] task={actual_task} env=rtl-debugger model={MODEL_NAME}", flush=True)
 
-    if not initial_design:
-        print(f"[ERROR] Could not load design for task {task_id}", flush=True)
+    if not numbered_code:
+        print(f"[END] success=false steps=0 score=0.01 rewards=[]", flush=True)
         return
 
     for step in range(1, MAX_STEPS + 1):
@@ -239,7 +225,7 @@ def run_task(env: RtlDebuggerEnv, llm: OpenAI, task_id: str) -> None:
         num_steps = step
         user_prompt = _build_user_prompt(
             step=step,
-            initial_design=initial_design,
+            numbered_code=numbered_code,
             task_context=task_context,
             history=history,
             latest_feedback=latest_feedback,
@@ -256,15 +242,17 @@ def run_task(env: RtlDebuggerEnv, llm: OpenAI, task_id: str) -> None:
 
         try:
             response_text = _get_llm_response(llm, messages)
-            code = _extract_verilog(response_text)
-            action_log = json.dumps(code)
-            
-            result = env.step(RtlDebuggerAction(fixed_code=code))
+            raw_edits = _extract_edits(response_text)
+            edit_ops = [EditOp(**e) for e in raw_edits]
+            action_log = json.dumps(raw_edits)
+
+            result = env.step(RtlDebuggerAction(edits=edit_ops))
             obs = result.observation
-            
+
             latest_feedback = obs.feedback
+            numbered_code = obs.numbered_code  # refresh with post-edit version
             rewards.append(result.reward)
-            history.append((code, obs.feedback, result.reward))
+            history.append((action_log, obs.feedback, result.reward))
             final_score = obs.score
 
             # If not everything passed, feedback is considered the current error

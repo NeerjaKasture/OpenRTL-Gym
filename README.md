@@ -23,9 +23,11 @@ Hardware debugging is a high-cost, iterative process. While LLMs are proficient 
 
 ## 🛠️ Environment Description
 The RTL Debugger is an OpenEnv-compliant environment that wraps industry-standard hardware tools:
-- **Simulation Engines**: Supports both **Icarus Verilog** and **Verilator** for fast, cycle-accurate simulation.
-- **Feedback Loop**: For every submitted design, the environment provides a detailed diagnostic report, including compilation errors, failed test cycles, and FSM transition mismatches.
+- **Simulation Engines**: Supports **Icarus Verilog** simulation.
+- **Feedback Loop**: For every submitted design, the environment provides a detailed diagnostic report in result.json which is given as feedback to the agent
 - **Iterative Debugging**: Agents can build upon their previous attempts, utilizing line-based edit distance (Levenshtein) and pass-rate progress to guide their refinement.
+
+PS. This was somewhat hard to benchmark since the model performance varies wildly based on LLM used. Gemini, for instance did very well, but not so much for Qwen.
 
 ## Quick Start
 
@@ -58,8 +60,21 @@ uv run python inference.py
 ## Environment Details
 
 ### Action Space (`RtlDebuggerAction`)
-The action space is **unstructured text** representing the revised hardware design:
-- `fixed_code` (str): The full Verilog module source intended to replace the current `design_active.v`.
+The agent submits a list of **line-level edit operations** on the current `design_active.v`:
+
+```json
+[
+  {"op": "replace", "line_number": 5, "new_content": "    assign sum = a ^ b;"},
+  {"op": "insert_after", "line_number": 2, "new_content": "    output sum, carry"},
+  {"op": "delete", "line_number": 7}
+]
+```
+
+| Operation | Meaning |
+|:---|:---|
+| `replace` | Replace line `line_number` with `new_content` |
+| `insert_after` | Insert `new_content` as a new line after `line_number` (use `0` for top) |
+| `delete` | Remove line `line_number` entirely |
 
 ### Observation Space: `RtlDebuggerObservation`
 Agents receive a rich observation after every edit, containing both raw technical feedback and normalized metrics:
@@ -67,6 +82,7 @@ Agents receive a rich observation after every edit, containing both raw technica
 | Field | Type | Description |
 | :--- | :--- | :--- |
 | `task_id` | `str` | Name of the selected task (e.g., `task1`). |
+| `numbered_code` | `str` | Current `design_active.v` with line numbers (for referencing in edits). |
 | `feedback` | `str` | Human-readable diagnostics: compiler logs or a cycle-by-cycle breakdown of test failures. |
 | `pass_rate` | `float` | Continuous metric [0.0 - 1.0] representing the percentage of test cases passed. |
 | `progress_ratio` | `float` | Percent of the test sequence completed before the first failure (measures sequential depth). |
@@ -90,9 +106,10 @@ The environment features curated hardware modules designed to test specific debu
 ```text
 .
 ├── tasks/                   # Curated hardware debugging tasks
-│   ├── task0_half_adder/    # Syntax & basic logic
-│   ├── task1_xor_gate/      # Combinational logic
-│   └── task2_moore_1101/    # Sequential logic
+│   ├── task1/    # Syntax & basic logic
+│   ├── task2/      # Combinational logic
+│   └── task3/    # Sequential logic
+│   └── task4/    # Real system
 ├── server/                  
 ├── models.py                
 ├── inference.py             

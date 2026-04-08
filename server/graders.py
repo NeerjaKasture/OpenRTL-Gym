@@ -6,13 +6,16 @@ class Task1Grader:
     """
     Grader for Task 1 (Syntax/Compilation Errors).
     Evaluates based on:
-    - Linting and Compilation passed.
+    - Compilation passed.
     - Number of steps needed.
     """
     def __init__(self, max_steps: int = 10):
         self.max_steps = max_steps
 
-    def __call__(self, state: State, env: "RtlDebuggerEnvironment") -> float:
+    def __call__(self, state: State = None, env: "RtlDebuggerEnvironment" = None) -> float:
+        if state is None or env is None:
+            return 0.01
+
         result_path = os.path.join(env._task_dir, "result.json")
         if not os.path.exists(result_path):
             return 0.01
@@ -40,7 +43,10 @@ class Task2Grader:
     def __init__(self, max_steps: int = 10):
         self.max_steps = max_steps
 
-    def __call__(self, state: State, env: "RtlDebuggerEnvironment") -> float:
+    def __call__(self, state: State = None, env: "RtlDebuggerEnvironment" = None) -> float:
+        if state is None or env is None:
+            return 0.01
+
         result_path = os.path.join(env._task_dir, "result.json")
         if not os.path.exists(result_path):
             return 0.01
@@ -77,7 +83,10 @@ class Task3Grader:
     def __init__(self, max_steps: int = 10):
         self.max_steps = max_steps
 
-    def __call__(self, state: State, env: "RtlDebuggerEnvironment") -> float:
+    def __call__(self, state: State = None, env: "RtlDebuggerEnvironment" = None) -> float:
+        if state is None or env is None:
+            return 0.01
+
         result_path = os.path.join(env._task_dir, "result.json")
         if not os.path.exists(result_path):
             # No result.json usually means compilation error or simulation timeout (deadlock/oscillation)
@@ -102,12 +111,8 @@ class Task3Grader:
         passed_all = result_json.get("passed", False)
         
         score = 0.0
-        # Partial credit based on sequential milestones
         score += seq_rate * 0.4
         score += trans_rate * 0.4
-        # Note: reset_working was removed from testbench or ignored for now, 
-        # but we could add it back if needed. For now let's use the remaining 0.2
-        # as a bonus for passing everything.
         
         if passed_all:
             score += 0.2

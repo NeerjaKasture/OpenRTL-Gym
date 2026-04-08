@@ -64,17 +64,32 @@ The agent submits a list of **line-level edit operations** on the current `desig
 
 ```json
 [
-  {"op": "replace", "line_number": 5, "new_content": "    assign sum = a ^ b;"},
-  {"op": "insert_after", "line_number": 2, "new_content": "    output sum, carry"},
-  {"op": "delete", "line_number": 7}
+  {
+    "op": "replace", 
+    "line_number": 5, 
+    "end_line": 7, 
+    "new_content": "    // Fixed block with multi-line support\n    assign sum = a ^ b;\n    assign carry = a & b;"
+  },
+  {
+    "op": "insert_after", 
+    "line_number": 2, 
+    "new_content": "    output sum, carry;"
+  },
+  {
+    "op": "delete", 
+    "line_number": 10, 
+    "end_line": 12
+  }
 ]
 ```
 
-| Operation | Meaning |
-|:---|:---|
-| `replace` | Replace line `line_number` with `new_content` |
-| `insert_after` | Insert `new_content` as a new line after `line_number` (use `0` for top) |
-| `delete` | Remove line `line_number` entirely |
+| Operation | Parameters | Meaning |
+|:---|:---|:---|
+| `replace` | `line_number`, `end_line`, `new_content` | Replaces lines from `line_number` to `end_line` (inclusive) with `new_content` (supports multiple lines via `\n`). |
+| `insert_after` | `line_number`, `new_content` | Inserts `new_content` as one or more new lines after `line_number` (use `0` for top of file). |
+| `delete` | `line_number`, `end_line` | Removes lines range `[line_number, end_line]` entirely. |
+
+*Note: `end_line` defaults to `line_number` if null, performing a single-line operation.*
 
 ### Observation Space: `RtlDebuggerObservation`
 Agents receive a rich observation after every edit, containing both raw technical feedback and normalized metrics:

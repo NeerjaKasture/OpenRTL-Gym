@@ -12,6 +12,14 @@ The rtl_debugger environment is a simple test environment that echoes back messa
 
 from openenv.core.env_server.types import Action, Observation
 from pydantic import Field
+from dataclasses import dataclass
+
+@dataclass
+class Task:
+    id: str
+    description: str
+    max_steps: int
+
 
 
 class RtlDebuggerAction(Action):

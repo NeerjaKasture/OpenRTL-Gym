@@ -1,14 +1,13 @@
 {
   "passed": true,
-  "num_tests": 4,
-  "num_passed": 4,
-  "simulation_time": 4.0,
+  "num_tests": 12,
+  "num_passed": 12,
+  "simulation_time": 12.0,
   "results": [
     {
       "test_id": 0,
       "input": {
-        "a": 0,
-        "b": 0
+        "binary": 0
       },
       "expected_output": 0,
       "actual_output": 0,
@@ -17,8 +16,7 @@
     {
       "test_id": 1,
       "input": {
-        "a": 0,
-        "b": 1
+        "binary": 1
       },
       "expected_output": 1,
       "actual_output": 1,
@@ -27,21 +25,91 @@
     {
       "test_id": 2,
       "input": {
-        "a": 1,
-        "b": 0
+        "binary": 2
       },
-      "expected_output": 1,
-      "actual_output": 1,
+      "expected_output": 3,
+      "actual_output": 3,
       "pass": true
     },
     {
       "test_id": 3,
       "input": {
-        "a": 1,
-        "b": 1
+        "binary": 3
       },
-      "expected_output": 0,
-      "actual_output": 0,
+      "expected_output": 2,
+      "actual_output": 2,
+      "pass": true
+    },
+    {
+      "test_id": 4,
+      "input": {
+        "binary": 127
+      },
+      "expected_output": 64,
+      "actual_output": 64,
+      "pass": true
+    },
+    {
+      "test_id": 5,
+      "input": {
+        "binary": 255
+      },
+      "expected_output": 128,
+      "actual_output": 128,
+      "pass": true
+    },
+    {
+      "test_id": 6,
+      "input": {
+        "binary": 254
+      },
+      "expected_output": 129,
+      "actual_output": 129,
+      "pass": true
+    },
+    {
+      "test_id": 7,
+      "input": {
+        "binary": 5
+      },
+      "expected_output": 7,
+      "actual_output": 7,
+      "pass": true
+    },
+    {
+      "test_id": 8,
+      "input": {
+        "binary": 10
+      },
+      "expected_output": 15,
+      "actual_output": 15,
+      "pass": true
+    },
+    {
+      "test_id": 9,
+      "input": {
+        "binary": 15
+      },
+      "expected_output": 8,
+      "actual_output": 8,
+      "pass": true
+    },
+    {
+      "test_id": 10,
+      "input": {
+        "binary": 128
+      },
+      "expected_output": 192,
+      "actual_output": 192,
+      "pass": true
+    },
+    {
+      "test_id": 11,
+      "input": {
+        "binary": 127
+      },
+      "expected_output": 64,
+      "actual_output": 64,
       "pass": true
     }
   ]

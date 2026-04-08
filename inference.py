@@ -36,30 +36,30 @@ except ImportError:
     from models import RtlDebuggerAction  # type: ignore
 
 # --- Configuration -------------------------------------------------------------
-# OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-# GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-# HF_TOKEN = os.getenv("HF_TOKEN")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+HF_TOKEN = os.getenv("HF_TOKEN")
 
-# if OPENAI_API_KEY:
-#     # Use OpenAI directly
-#     API_BASE_URL = os.getenv("API_BASE_URL") # use default (None) for OpenAI
-#     API_KEY = OPENAI_API_KEY
-#     MODEL_NAME = os.getenv("MODEL_NAME") or "gpt-4o"
-# elif GEMINI_API_KEY:
-#     # Set defaults for Gemini (which uses an OpenAI-compatible endpoint)
-#     API_BASE_URL = os.getenv("API_BASE_URL") or "https://generativelanguage.googleapis.com/v1beta/openai/"
-#     API_KEY = GEMINI_API_KEY
-#     MODEL_NAME = os.getenv("MODEL_NAME") or "gemini-2.5-flash"
-# else:
-#     # Fall back to Hugging Face router
-#     API_BASE_URL = os.getenv("API_BASE_URL") or "https://router.huggingface.co/v1"
-#     API_KEY = HF_TOKEN or os.getenv("API_KEY")
-#     MODEL_NAME = os.getenv("MODEL_NAME") or "Qwen/Qwen2.5-72B-Instruct:novita"
+if OPENAI_API_KEY:
+    # Use OpenAI directly
+    API_BASE_URL = os.getenv("API_BASE_URL") # use default (None) for OpenAI
+    API_KEY = OPENAI_API_KEY
+    MODEL_NAME = "gpt-4o"
+elif GEMINI_API_KEY:
+    # Set defaults for Gemini (which uses an OpenAI-compatible endpoint)
+    API_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai/"
+    API_KEY = GEMINI_API_KEY
+    MODEL_NAME = "gemini-2.5-flash"
+else:
+    # Fall back to Hugging Face router
+    API_BASE_URL = "https://router.huggingface.co/v1"
+    API_KEY = HF_TOKEN or os.getenv("API_KEY")
+    MODEL_NAME = os.getenv("MODEL_NAME") or "Qwen/Qwen2.5-72B-Instruct:novita"
 
 
-API_BASE_URL = os.getenv("API_BASE_URL") or "https://router.huggingface.co/v1"
-API_KEY = os.getenv("API_KEY") or os.getenv("HF_TOKEN")
-MODEL_NAME = os.getenv("MODEL_NAME") or "Qwen/Qwen2.5-72B-Instruct:novita"
+# API_BASE_URL = os.getenv("API_BASE_URL") or "https://router.huggingface.co/v1"
+# API_KEY = os.getenv("API_KEY") or os.getenv("HF_TOKEN")
+# MODEL_NAME = os.getenv("MODEL_NAME") or "Qwen/Qwen2.5-72B-Instruct:novita"
 
 TASK_NAME = os.getenv("RTL_DEBUGGER_TASK_NAME", "unknown-task")
 IMAGE_NAME = os.getenv("IMAGE_NAME")
@@ -69,6 +69,8 @@ TEMPERATURE = 0.3
 MAX_TOKENS = 8192
 
 SUCCESS_SCORE_THRESHOLD = 0.1
+
+ENV_BASE_URL = os.getenv("ENV_BASE_URL ", "http://localhost:8000")
 
 
 # --- Prompts -------------------------------------------------------------------
@@ -200,106 +202,116 @@ def _get_llm_response(llm: OpenAI, messages: List[dict], max_retries: int = 4) -
             err_msg = str(exc).lower()
             if "rate limit" in err_msg or "too many requests" in err_msg or "temporary" in err_msg or attempt < max_retries - 1:
                 wait_time = (2 ** attempt) * 2  # Exponential backoff: 2, 4, 8, 16...
-                print(f"[Retry] Attempt {attempt + 1} failed: {exc}. Retrying in {wait_time}s...")
+                print(f"[RETRY] Attempt {attempt + 1} failed: {exc}. Retrying in {wait_time}s...", flush=True)
                 time.sleep(wait_time)
             else:
                 raise exc
     return ""
 
 
-SERVER_URL = os.getenv("RTL_SERVER_URL", "http://localhost:8000")
-
-
-def main() -> None:
-    llm = OpenAI(base_url=API_BASE_URL, api_key=API_KEY)
-
+def run_task(env: RtlDebuggerEnv, llm: OpenAI, task_id: str) -> None:
+    """Run the inference loop for a single task."""
     history: List[Tuple[str, str, float]] = []  # (code, feedback, reward) triples
     rewards: List[float] = []
-    success = False
     num_steps = 0
     final_score = 0.0
 
-    # final_score is tracked to report at end
-    final_score = 0.0
+    # Pass task_id to select the specific task
+    reset_options = {"TASK_NAME": task_id}
+    result = env.reset(options=reset_options)
+    obs = result.observation
+    initial_design = obs.design_code
+    task_context = obs.task_context
+    latest_feedback = obs.feedback
 
-    try:
-        with RtlDebuggerEnv(base_url=SERVER_URL).sync() as env:
-            # Pass TASK_NAME if specified to select a specific task
-            reset_options = {"TASK_NAME": TASK_NAME} if TASK_NAME and TASK_NAME != "unknown-task" else None
-            result = env.reset(options=reset_options)
+    # Emit the START line using the actual task_id from the observation
+    actual_task = obs.task_id
+    print(f"[START] task={actual_task} env=rtl-debugger model={MODEL_NAME}", flush=True)
+
+    if not initial_design:
+        print(f"[ERROR] Could not load design for task {task_id}", flush=True)
+        return
+
+    for step in range(1, MAX_STEPS + 1):
+        if result.done:
+            break
+
+        num_steps = step
+        user_prompt = _build_user_prompt(
+            step=step,
+            initial_design=initial_design,
+            task_context=task_context,
+            history=history,
+            latest_feedback=latest_feedback,
+        )
+
+        messages = [
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": user_prompt},
+        ]
+
+        # Initialize log variables for this step
+        action_log = "null"
+        last_error = "null"
+
+        try:
+            response_text = _get_llm_response(llm, messages)
+            code = _extract_verilog(response_text)
+            action_log = json.dumps(code)
+            
+            result = env.step(RtlDebuggerAction(fixed_code=code))
             obs = result.observation
-            initial_design = obs.design_code
-            task_context = obs.task_context
+            
             latest_feedback = obs.feedback
+            rewards.append(result.reward)
+            history.append((code, obs.feedback, result.reward))
+            final_score = obs.score
 
-            # Emit the START line using the actual task_id from the observation
-            # (this handles random task selection correctly)
-            actual_task = obs.task_id
-            print(f"[START] task={actual_task} env=rtl-debugger model={MODEL_NAME}")
+            # If not everything passed, feedback is considered the current error
+            if not result.done:
+                if obs.compiled:
+                    # Simplified message for successful compiles that failed tests
+                    last_error = json.dumps(f"Compiled, Pass ratio: {obs.pass_rate:.2f}")
+                else:
+                    # Show full feedback for compile errors
+                    last_error = json.dumps(obs.feedback)
+        except Exception as exc:
+            last_error = json.dumps(str(exc))
+            done_str = "false"
+            print(f"[STEP] step={step} action={action_log} reward=0.00 done={done_str} error={last_error}", flush=True)
+            break
 
-            if not initial_design:
-                return
+        # Emit the STEP line per spec
+        done_str = "true" if result.done else "false"
+        print(f"[STEP] step={step} action={action_log} reward={result.reward:0.2f} done={done_str} error={last_error}", flush=True)
 
-            for step in range(1, MAX_STEPS + 1):
-                if result.done:
-                    break
+    # Emit the END line (always)
+    rewards_str = ",".join([f"{r:0.2f}" for r in rewards])
+    final_score = max(0.01, min(0.99, final_score))
+    success = final_score >= SUCCESS_SCORE_THRESHOLD
+    success_str = "true" if success else "false"
+    print(f"[END] success={success_str} steps={num_steps} score={final_score:.2f} rewards={rewards_str}", flush=True)
 
-                num_steps = step
-                user_prompt = _build_user_prompt(
-                    step=step,
-                    initial_design=initial_design,
-                    task_context=task_context,
-                    history=history,
-                    latest_feedback=latest_feedback,
-                )
 
-                messages = [
-                    {"role": "system", "content": SYSTEM_PROMPT},
-                    {"role": "user", "content": user_prompt},
-                ]
+def main() -> None:
+    # 1. Initialize LLM client
+    llm_client = OpenAI(base_url=API_BASE_URL, api_key=API_KEY)
 
-                # Initialize log variables for this step
-                action_log = "null"
-                last_error = "null"
+    # 2. Determine which tasks to run
+    # Check both TASK_NAME and RTL_DEBUGGER_TASK_NAME for flexibility
+    target_task = os.getenv("TASK_NAME") or os.getenv("RTL_DEBUGGER_TASK_NAME")
+    if target_task and target_task != "unknown-task":
+        tasks_to_run = [target_task]
+    else:
+        tasks_to_run = ["task1", "task2", "task3"]
 
-                try:
-                    response_text = _get_llm_response(llm, messages)
-                    code = _extract_verilog(response_text)
-                    action_log = json.dumps(code)
-                    
-                    result = env.step(RtlDebuggerAction(fixed_code=code))
-                    obs = result.observation
-                    
-                    latest_feedback = obs.feedback
-                    rewards.append(result.reward)
-                    history.append((code, obs.feedback, result.reward))
-                    final_score = obs.score
-
-                    # If not everything passed, feedback is considered the current error
-                    if not result.done:
-                        if obs.compiled:
-                            # Simplified message for successful compiles that failed tests
-                            last_error = json.dumps(f"Compiled, Pass ratio: {obs.pass_rate:.2f}")
-                        else:
-                            # Show full feedback for compile errors
-                            last_error = json.dumps(obs.feedback)
-                except Exception as exc:
-                    last_error = json.dumps(str(exc))
-                    done_str = "false"
-                    print(f"[STEP] step={step} action={action_log} reward=0.00 done={done_str} error={last_error}")
-                    break
-
-                # Emit the STEP line per spec
-                done_str = "true" if result.done else "false"
-                print(f"[STEP] step={step} action={action_log} reward={result.reward:0.2f} done={done_str} error={last_error}")
-
-    finally:
-        # Emit the END line (always)
-        rewards_str = ",".join([f"{r:0.2f}" for r in rewards])
-        final_score = max(0.01, min(0.99, final_score))
-        success = final_score >= SUCCESS_SCORE_THRESHOLD
-        success_str = "true" if success else "false"
-        print(f"[END] success={success_str} steps={num_steps} score={final_score:.3f} rewards={rewards_str}")
+    # 3. Connect to the environment and iterate
+    try:
+        with RtlDebuggerEnv(base_url=ENV_BASE_URL ).sync() as env:
+            for task_id in tasks_to_run:
+                run_task(env, llm_client, task_id)
+    except Exception as e:
+        print(f"[CRITICAL ERROR] Failed to connect to RTL server or run tasks: {e}", flush=True)
 
 
 if __name__ == "__main__":

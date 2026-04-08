@@ -1,7 +1,7 @@
 TOPLEVEL_LANG = verilog
 VERILOG_SOURCES = design_active.v
-TOPLEVEL = gate
-COCOTB_TEST_MODULES = test_xor_gate_simple
+TOPLEVEL = bin_gry
+COCOTB_TEST_MODULES = test_bin_to_gray
 
 SIM = icarus
 

@@ -44,8 +44,24 @@ except (ImportError, ValueError):
         from rtl_debugger_environment import RtlDebuggerEnvironment
     except ImportError:
         # Final fallback for unusual execution contexts
-        from rtl_debugger.models import RtlDebuggerAction, RtlDebuggerObservation
+        from rtl_debugger.models import RtlDebuggerAction, RtlDebuggerObservation, Task
         from rtl_debugger.server.rtl_debugger_environment import RtlDebuggerEnvironment
+
+def get_tasks() -> list:
+    """Return the list of tasks supported by this environment, used by the remote validator."""
+    try:
+        from .models import Task
+    except ImportError:
+        try:
+            from models import Task
+        except ImportError:
+            from rtl_debugger.models import Task
+            
+    return [
+        Task(id="task1", description="Easy — syntax/compilation errors", max_steps=10),
+        Task(id="task2", description="Medium — logic errors in combinational circuit", max_steps=10),
+        Task(id="task3", description="Hard — logic errors in sequential circuit", max_steps=10),
+    ]
 
 # Create the app with web interface and README integration
 app = create_app(

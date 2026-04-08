@@ -1,6 +1,6 @@
 <testsuites name="results">
   <testsuite name="all" package="all">
-    <property name="random_seed" value="1775559296" />
-    <testcase name="test_xor_gate_simple" classname="test_xor_gate_simple" file="/mnt/c/Users/npkas/Agentic-RL/rtl_debugger/tasks/task1/test_xor_gate_simple.py" lineno="12" time="0.003946542739868164" sim_time_ns="4.0" ratio_time="1013.5453392134357" />
+    <property name="random_seed" value="1775630292" />
+    <testcase name="test_bin_to_gray" classname="test_bin_to_gray" file="/mnt/c/Users/npkas/Agentic-RL/rtl_debugger/tasks/task2/test_bin_to_gray.py" lineno="20" time="0.021413326263427734" sim_time_ns="12.0" ratio_time="560.3986906272964" />
   </testsuite>
 </testsuites>
